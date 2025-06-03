@@ -21,15 +21,11 @@ If you are an IBMer or Business Parter, you can request access to vSphere throug
 
 [VMware on IBM Cloud Environments](https://techzone.ibm.com/collection/tech-zone-certified-base-images/journey-vmware-on-ibm-cloud-environments)
 
-Select `Request vCenter access (OCP Gym)
+Select `Request vCenter access (OCP Gym)`
 
 ---
 
 ## Pre flight checklist
-
-Here’s a **Markdown guide with images** that explains how to prepare a RHEL 9 template for use in a Terraform module deployment on vSphere:
-
----
 
 ### 🛠️ Preparing a RHEL 9 Template for Terraform on vSphere
 
