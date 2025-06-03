@@ -1,0 +1,41 @@
+#cloud-config
+hostname: k3s-agent-${index}
+fqdn: k3s-agent-${index}.${base_domain}
+preserve_hostname: false
+
+users:
+  - name: clouduser
+    gecos: Cloud User
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    groups: wheel
+    lock_passwd: false
+    passwd: "$6$.JHdCXwZ7DbJhEv3$EgrqGuqJxsvGBXLskXJlKL93aCW1h6C/RHtqHuMA8oPGka1749xokt6lbCQz/uGokNUiHBRP7KceSPE3vPLfI."
+    ssh_authorized_keys:
+      - ${public_key}
+
+disk_setup:
+  /dev/sdb:
+    table_type: gpt
+    layout: true
+    overwrite: false
+  /dev/sdc:
+    table_type: gpt
+    layout: true
+    overwrite: false
+
+fs_setup:
+  - label: rancher # maximum 12 characters
+    filesystem: xfs
+    device: /dev/sdb1
+    partition: auto
+  - label: aio_storage # maximum 12 characters
+    filesystem: xfs
+    device: /dev/sdc1
+    partition: auto
+
+mounts:
+  - [ /dev/sdb1, /var/lib/rancher, auto, "defaults,nofail", "0", "2" ]
+  - [ /dev/sdc1, /var/lib/aiops/storage, auto, "defaults,nofail", "0", "2" ]
+
+final_message: "The system is finally up, after $UPTIME seconds"

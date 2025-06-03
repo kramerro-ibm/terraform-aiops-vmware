@@ -1,0 +1,16 @@
+#cloud-config
+hostname: haproxy
+fqdn: haproxy.${base_domain}
+
+users:
+  - name: clouduser
+    gecos: Cloud User
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    groups: wheel
+    lock_passwd: false
+    passwd: "$6$.JHdCXwZ7DbJhEv3$EgrqGuqJxsvGBXLskXJlKL93aCW1h6C/RHtqHuMA8oPGka1749xokt6lbCQz/uGokNUiHBRP7KceSPE3vPLfI."
+    ssh_authorized_keys:
+      - ${public_key}
+
+final_message: "The system is finally up, after $UPTIME seconds"

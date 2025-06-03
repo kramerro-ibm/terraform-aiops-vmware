@@ -1,0 +1,51 @@
+#cloud-config
+hostname: k3s-server-${index}
+fqdn: k3s-server-${index}.${base_domain}
+preserve_hostname: false
+manage_etc_hosts: true
+
+users:
+  - name: clouduser
+    gecos: Cloud User
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    groups: wheel
+    lock_passwd: false
+    passwd: "$6$.JHdCXwZ7DbJhEv3$EgrqGuqJxsvGBXLskXJlKL93aCW1h6C/RHtqHuMA8oPGka1749xokt6lbCQz/uGokNUiHBRP7KceSPE3vPLfI."
+    ssh_authorized_keys:
+      - ${public_key}
+
+disk_setup:
+  /dev/sdb:
+    table_type: gpt
+    layout: true
+    overwrite: false
+  /dev/sdc:
+    table_type: gpt
+    layout: true
+    overwrite: false
+  /dev/sdd:
+    table_type: gpt
+    layout: true
+    overwrite: false
+
+fs_setup:
+  - label: rancher # maximum 12 characters
+    filesystem: xfs
+    device: /dev/sdb1
+    partition: auto
+  - label: aio_storage # maximum 12 characters
+    filesystem: xfs
+    device: /dev/sdc1
+    partition: auto
+  - label: aio_platform # maximum 12 characters
+    filesystem: xfs
+    device: /dev/sdd1
+    partition: auto
+
+mounts:
+  - [ /dev/sdb1, /var/lib/rancher, auto, "defaults,nofail", "0", "2" ]
+  - [ /dev/sdc1, /var/lib/aiops/storage, auto, "defaults,nofail", "0", "2" ]
+  - [ /dev/sdd1, /var/lib/aiops/platform, auto, "defaults,nofail", "0", "2" ]
+
+final_message: "The system is finally up, after $UPTIME seconds"

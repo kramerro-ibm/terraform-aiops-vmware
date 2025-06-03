@@ -1,0 +1,40 @@
+// Base domain from which the cluster domain is a subdomain.
+base_domain = "gym.lan"
+
+// Name of the vSphere server. The dev cluster is on "vcsa.vmware.devcluster.openshift.com".
+vsphere_server = "ocpgym-vc.techzone.ibm.local"
+
+// User on the vSphere server.
+vsphere_user = "gymuser-k3s8e2p2@techzone.ibm.local"
+
+// Password of the user on the vSphere server.
+vsphere_password = "MDGabhNK"
+
+// Name of the vSphere cluster. The dev cluster is "devel".
+cluster_name = "ocp-gym"
+
+// Name of the vSphere data center. The dev cluster is "dc1".
+datacenter_name = "IBMCloud"
+
+// Name of the vSphere data store to use for the VMs. The dev cluster uses "nvme-ds1".
+datastore_name = "gym-0600020stv-k3s8e2p2-storage"
+
+// Name of the RHCOS VM template to clone to create VMs for the cluster
+template_name = "ocp-gym/gym-0600020stv-k3s8e2p2/linux-rhel95-template"
+
+// Name of the VM Network for your cluster nodes
+vm_network_name = "gym-0600020stv-k3s8e2p2-segment"
+
+vsphere_folder = "ocp-gym/gym-0600020stv-k3s8e2p2"
+
+k3s_agent_count = 6
+
+aiops_version = "4.9.1"
+
+ibm_entitlement_key = "1iOJ0eVJcIi9yJXJgILUeCzIhKJINiA3J9.eyJpc3MiOiJJQk0gTWFya2V0cGxhY2UiLCJpYXQiOjE3MTUxOTgxMzIsImp0aSI6IjlmOGE0ZGQwOTcyNDQ4YjQ4NTZjNmU5ZDI4NWRjY2YwIn0.7gXK1sYpUeFQwLxO3mO_RdtsYliPNCei8JwFukSMv"
+
+accept_license      = "true"
+
+install_aiops       = true
+
+ignore_prereqs      = true
