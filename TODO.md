@@ -1,3 +1,3 @@
 - Change k3s servers to dhcp
-- Change cpu/memory to fit example what is needed for base/extended
 - Parameterize haproxy IP, it's nice if this is static b/c you don't have to change your etc/hosts file after each rebuild
+- Add reference to artifactory instructions for offline install

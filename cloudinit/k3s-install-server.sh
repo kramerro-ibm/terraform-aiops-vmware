@@ -19,6 +19,51 @@ do
 done
 }
 
+disable_checksum_offload() {
+# Wait for flannel.1 interface to appear
+echo "Waiting for flannel.1 interface to be available..."
+while ! ip link show flannel.1 &> /dev/null; do
+  sleep 1
+done
+echo "flannel.1 interface detected. Disabling tx-checksum-ip-generic..."
+# Disable TX checksum offloading for the flannel.1 interface to prevent packet corruption issues
+# in some environments where the underlying network does not support checksum offloading properly.
+# This is especially relevant in virtualized or cloud environments using Flannel as the CNI.
+ethtool -K flannel.1 tx-checksum-ip-generic off
+}
+
+# use k3sadmin group to allow clouduser to run commands
+nonroot_config() {
+groupadd k3sadmin
+usermod -aG k3sadmin clouduser
+
+chown root:k3sadmin /usr/local/bin/k3s
+chmod 750 /usr/local/bin/k3s
+
+chown root:k3sadmin /etc/rancher/
+chmod 750 /etc/rancher/
+
+chown -R root:k3sadmin /etc/rancher/k3s/
+chmod 750 /etc/rancher/k3s/
+
+chmod 750 /etc/rancher/k3s/config.yaml
+chmod 660 /etc/rancher/k3s/k3s.yaml
+
+# for crictl
+chown root:k3sadmin /var/lib/rancher/k3s/agent/etc/
+chmod 750 /var/lib/rancher/k3s/agent/etc/
+# for crictl
+chown root:k3sadmin /var/lib/rancher/k3s/agent/etc/crictl.yaml
+chmod 640 /var/lib/rancher/k3s/agent/etc/crictl.yaml
+
+%{ if !use_private_registry }
+# for oc
+mkdir -p /home/clouduser/.kube
+cp /etc/rancher/k3s/k3s.yaml /home/clouduser/.kube/config
+chown -R clouduser:clouduser /home/clouduser/.kube
+%{ endif }
+}
+
 # wait for subscription registration to complete
 while ! subscription-manager status; do
     echo "Waiting for RHSM registration..."
@@ -69,7 +114,15 @@ export HOME=/root
 k3s_install_params=("--accept-license=${accept_license}")
 k3s_install_params+=("--role=control-plane")
 k3s_install_params+=("--token=${k3s_token}")
+%{ if use_private_registry }
+k3s_install_params+=("--registry=${private_registry}")
+k3s_install_params+=("--registry-user=${private_registry_user}")
+k3s_install_params+=("--registry-token=${private_registry_user_password}")
+k3s_install_params+=("--insecure-skip-tls-verify=${private_registry_skip_tls}")
+k3s_install_params+=("--offline")
+%{ else }
 k3s_install_params+=("--registry-token=${ibm_entitlement_key}")
+%{ endif }
 k3s_install_params+=("--app-storage /var/lib/aiops/storage")
 k3s_install_params+=("--platform-storage /var/lib/aiops/platform")
 k3s_install_params+=("--image-storage /var/lib/aiops/storage")
@@ -87,17 +140,9 @@ if [[ "$first_instance" == "$instance_id" ]]; then
     sleep 2
   done
 
-  # Wait for flannel.1 interface to appear
-  echo "Waiting for flannel.1 interface to be available..."
-  while ! ip link show flannel.1 &> /dev/null; do
-    sleep 1
-  done
+  disable_checksum_offload
 
-  echo "flannel.1 interface detected. Disabling tx-checksum-ip-generic..."
-  # Disable TX checksum offloading for the flannel.1 interface to prevent packet corruption issues
-  # in some environments where the underlying network does not support checksum offloading properly.
-  # This is especially relevant in virtualized or cloud environments using Flannel as the CNI.
-  ethtool -K flannel.1 tx-checksum-ip-generic off
+  nonroot_config
 
   # wait for k3s startup
   until kubectl get pods -A | grep 'Running'; do
@@ -117,7 +162,7 @@ if [[ "$first_instance" == "$instance_id" ]]; then
     fi
   done
 
-    # update coredns for haproxy resolution
+  # update coredns for haproxy resolution
   kubectl apply -f - <<EOF
 apiVersion: v1
 kind: ConfigMap
@@ -142,7 +187,7 @@ EOF
   kubectl -n kube-system rollout restart deployment coredns
 
   # additional sleep to make sure all nodes are up
-  sleep 15
+  sleep 10
 
   # install aiops
   if [[ "$install_aiops" == "true" ]]; then
@@ -157,8 +202,8 @@ else
     echo 'k3s did not install correctly'
     sleep 5
   done
-  # Disable TX checksum offloading for the flannel.1 interface to prevent packet corruption issues
-  # in some environments where the underlying network does not support checksum offloading properly.
-  # This is especially relevant in virtualized or cloud environments using Flannel as the CNI.
-  ethtool -K flannel.1 tx-checksum-ip-generic off
+
+  disable_checksum_offload
+
+  nonroot_config
 fi

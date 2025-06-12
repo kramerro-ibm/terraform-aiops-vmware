@@ -28,3 +28,18 @@ resource "random_password" "k3s_token" {
   length  = 55
   special = false
 }
+
+locals {
+  # build the private registry URL
+  private_registry = var.private_registry_repo != "" ? "${var.private_registry_host}:${var.private_registry_port}/${var.private_registry_repo}" : "${var.private_registry_host}:${var.private_registry_port}"
+
+  total_nodes = var.k3s_server_count + var.k3s_agent_count
+
+  # these are the minimums for base and extended deployment
+  cpu_pool    = var.mode == "base" ? 136 : 162
+  mem_pool_gb = var.mode == "base" ? 322 : 380
+
+  # calculate cpus and memory needed per node
+  num_cpus = max(16, ceil(local.cpu_pool / local.total_nodes))
+  memory   = max(20480, ceil(local.mem_pool_gb / local.total_nodes) * 1024)
+}

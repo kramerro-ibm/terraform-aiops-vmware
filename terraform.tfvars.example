@@ -38,3 +38,10 @@ accept_license      = "true"
 install_aiops       = true
 
 ignore_prereqs      = true
+
+#use_private_registry = true
+#private_registry_host = "artifactory.gym.lan"
+#private_registry_port = 8443
+#private_registry_repo = "docker-local"
+#private_registry_user = "admin"
+#private_registry_user_password = "password"

@@ -176,12 +176,11 @@ sudo dnf install -y git bind-utils
 ```
 
 #### 2. **Clone the repo**
-Now clone the repo:
+Now clone this repo:
 
 ```bash
 git clone <repo>
 ```
-
 
 ### Define Terraform variables
 
@@ -342,7 +341,7 @@ All commands below should be run as root from a control plane node.
 
 List the nodes:
 ```bash
-oc get nodes
+kubectl get nodes
 ```
 
 Sample output:
@@ -361,7 +360,7 @@ k3s-server-2.gym.lan   Ready    control-plane,etcd,master   5m10s   v1.31.7+k3s1
 
 List all pods:
 ```
-oc get pods -A
+kubectl get pods -A
 ```
 
 Sample output (note that during install, some unhealthy pods are expected):
@@ -381,7 +380,7 @@ aiops                 aiops-installation-edb-postgres-3                         
 
 List all pods that are in unhealthy state:
 ```
-oc get pods -A | grep -vE 'Completed|([0-9]+)/\1'
+kubectl get pods -A | grep -vE 'Completed|([0-9]+)/\1'
 ```
 
 Sample output (again, unhealthy pods are expected during install):

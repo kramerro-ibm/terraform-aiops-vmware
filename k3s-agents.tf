@@ -19,12 +19,17 @@ data "cloudinit_config" "k3s_agent_userdata" {
   part {
     content_type = "text/x-shellscript"
     content = templatefile("${path.module}/cloudinit/k3s-install-agent.sh", {
-      k3s_token           = random_password.k3s_token.result,
-      k3s_url             = "haproxy.${var.base_domain}",
-      accept_license      = var.accept_license,
-      ibm_entitlement_key = var.ibm_entitlement_key,
-      aiops_version       = var.aiops_version
-      ignore_prereqs      = var.ignore_prereqs ? true : false
+      k3s_token                      = random_password.k3s_token.result,
+      k3s_url                        = "haproxy.${var.base_domain}",
+      accept_license                 = var.accept_license,
+      ibm_entitlement_key            = var.ibm_entitlement_key,
+      aiops_version                  = var.aiops_version,
+      ignore_prereqs                 = var.ignore_prereqs ? true : false,
+      use_private_registry           = var.use_private_registry ? true : false,
+      private_registry               = local.private_registry,
+      private_registry_user          = var.private_registry_user,
+      private_registry_user_password = var.private_registry_user_password,
+      private_registry_skip_tls      = var.private_registry_skip_tls ? "true" : "false"
     })
   }
 }
@@ -48,8 +53,8 @@ resource "vsphere_virtual_machine" "k3s_agent" {
 
   folder = var.vsphere_folder
 
-  num_cpus  = 16
-  memory    = 65536
+  num_cpus  = local.num_cpus
+  memory    = local.memory
   guest_id  = data.vsphere_virtual_machine.template.guest_id
   scsi_type = data.vsphere_virtual_machine.template.scsi_type
 
