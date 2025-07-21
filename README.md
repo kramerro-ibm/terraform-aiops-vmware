@@ -39,11 +39,11 @@ You want to deploy VMs using Terraform, but Terraform needs a **pre-existing VM 
 
 ---
 
-#### 2. 🧱 Use the Red Hat OVA Generator
+#### 2. 🧱 Use the Red Hat Image Builder
 
 Red Hat provides a tool to generate OVA files for RHEL 9. This is a convenient way to create a VM image that can be imported into vSphere.
 
-> 🔗 You can find the OVA generator on the Red Hat Customer Portal.
+> 🔗 You can find the [image builder](https://console.redhat.com/insights/image-builder/) on the Red Hat Customer Portal.
 
 ---
 
@@ -54,9 +54,7 @@ Once you have the OVA file:
 1. Open **vSphere Client**.
 2. Go to **Deploy OVF Template**.
 3. Upload the RHEL 9 OVA.
-4. Follow the wizard to deploy it as a VM.
-5. Power it on, configure it (e.g., install VMware Tools, set hostname, etc.).
-6. Shut it down and convert it to a **template**.
+4. Follow the wizard to deploy it as a VM or template.
 
 ### Install Terraform
 
@@ -64,7 +62,7 @@ Once you have the OVA file:
 > In such cases, consider running your Terraform commands from a **bastion host** that resides **within the same network or environment** as vSphere.  
 > This can help avoid VPN-related latency or firewall restrictions that interfere with the connection.
 
-To install **Terraform** on a **RHEL 8** bastion host, follow these steps:
+To install **Terraform** from a **RHEL 8** bastion host, follow these steps:
 
 ---
 
