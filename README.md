@@ -179,6 +179,9 @@ Now clone this repo:
 ```bash
 git clone <repo>
 ```
+### Configure Private Registry (Optional)
+
+If you want to do an offline installation, you can configure a private registry using [Artifactory](https://github.com/ibm-client-engineering/terraform-artifactory-vmware) and follow the product instructions for mirroring the images.
 
 ### Define Terraform variables
 
