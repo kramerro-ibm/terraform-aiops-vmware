@@ -25,7 +25,9 @@ data "cloudinit_config" "haproxy_userdata" {
       vsphere_user       = var.vsphere_user,
       vsphere_password   = var.vsphere_password,
       vsphere_datacenter = var.datacenter_name,
-      vsphere_folder     = var.vsphere_folder
+      vsphere_folder     = var.vsphere_folder,
+      rhsm_username      = var.rhsm_username,
+      rhsm_password      = var.rhsm_password
     })
   }
 }
@@ -59,6 +61,9 @@ resource "vsphere_virtual_machine" "haproxy" {
     eagerly_scrub    = data.vsphere_virtual_machine.template.disks.0.eagerly_scrub
     thin_provisioned = data.vsphere_virtual_machine.template.disks.0.thin_provisioned
   }
+
+  firmware                = "efi" # Ensure this matches your Packer template's firmware type
+  efi_secure_boot_enabled = false # Disable Secure Boot during cloning
 
   clone {
     template_uuid = data.vsphere_virtual_machine.template.id

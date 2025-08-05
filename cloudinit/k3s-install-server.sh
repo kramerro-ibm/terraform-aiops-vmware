@@ -64,11 +64,75 @@ chown -R clouduser:clouduser /home/clouduser/.kube
 %{ endif }
 }
 
-# wait for subscription registration to complete
-while ! subscription-manager status; do
-    echo "Waiting for RHSM registration..."
-    sleep 10
+echo "Starting RHSM registration script (Simple Content Access enabled) at $(date)"
+
+RHSM_USERNAME="${rhsm_username}"
+RHSM_PASSWORD="${rhsm_password}"
+
+if [[ -z "$RHSM_USERNAME" || -z "$RHSM_PASSWORD" ]]; then
+    echo "ERROR: RHSM username or password not provided. Skipping registration."
+    exit 1
+fi
+
+echo "Attempting to register system with RHSM..."
+# With Simple Content Access, --auto-attach is generally sufficient after registration.
+subscription-manager register --username="$RHSM_USERNAME" --password="$RHSM_PASSWORD" --auto-attach || {
+    echo "ERROR: RHSM registration failed."
+    exit 1
+}
+echo "RHSM registration successful. Entitlements should be available via Simple Content Access."
+
+echo "Refreshing subscriptions and updating yum/dnf metadata..."
+subscription-manager refresh || echo "WARNING: Failed to refresh subscriptions."
+yum makecache || dnf makecache || echo "WARNING: Failed to refresh package cache."
+
+echo "RHSM registration script finished at $(date)"
+
+
+echo "Starting LVM disk setup at $(date)"
+
+# Install LVM2 utilities if not already present
+echo "Installing lvm2..."
+yum install -y lvm2 || dnf install -y lvm2 || { echo "ERROR: Failed to install lvm2."; exit 1; }
+echo "lvm2 installed."
+
+echo "Creating logical volumes..."
+processed_disks=""
+
+for disk in $(lsblk -o NAME,TYPE | grep disk | awk '{print $1}'); do
+  if ! lsblk /dev/$disk | grep -q part; then
+    echo "Processing /dev/$disk"
+    parted /dev/$disk --script mklabel gpt
+    parted /dev/$disk --script mkpart primary 0% 100%
+    pvcreate /dev/$${disk}1
+    processed_disks="$processed_disks /dev/$${disk}1"
+  fi
 done
+
+if [ -n "$processed_disks" ]; then
+  vgcreate vg_aiops $processed_disks
+else
+  echo "No disks were processed."
+fi
+
+lvcreate -L 119G -n lv_storage vg_aiops
+lvcreate -L 119G -n lv_platform vg_aiops
+lvcreate -L 24G -n lv_rancher vg_aiops
+mkfs.xfs /dev/vg_aiops/lv_storage
+mkfs.xfs /dev/vg_aiops/lv_platform
+mkfs.xfs /dev/vg_aiops/lv_rancher
+mkdir -p /var/lib/aiops/storage
+mkdir -p /var/lib/aiops/platform
+mkdir -p /var/lib/rancher
+mount /dev/vg_aiops/lv_storage /var/lib/aiops/storage
+mount /dev/vg_aiops/lv_platform /var/lib/aiops/platform
+mount /dev/vg_aiops/lv_rancher /var/lib/rancher
+echo "/dev/vg_aiops/lv_storage /var/lib/aiops/storage xfs defaults,nofail 0 2" | tee -a /etc/fstab
+echo "/dev/vg_aiops/lv_platform /var/lib/aiops/platform xfs defaults,nofail 0 2" | tee -a /etc/fstab
+echo "/dev/vg_aiops/lv_rancher /var/lib/rancher xfs defaults,nofail 0 2" | tee -a /etc/fstab
+
+echo "All specified Logical Volumes created, formatted, mounted, and added to fstab."
+echo "LVM disk setup finished at $(date)"
 
 # k3s won't run with nm-cloud-setup enabled
 systemctl stop nm-cloud-setup.timer
@@ -85,24 +149,28 @@ curl -LO "https://github.com/IBM/aiopsctl/releases/download/v${aiops_version}/ai
 tar xf "aiopsctl-linux_amd64.tar.gz"
 mv aiopsctl /usr/local/bin/aiopsctl
 
-# echo "Disabling selinux"
-# sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
-# setenforce 0
-echo "Opening firewall ports"
-firewall-cmd --permanent --add-port=80/tcp # Application HTTP port
-firewall-cmd --permanent --add-port=443/tcp # Application HTTPS port
-firewall-cmd --permanent --add-port=6443/tcp # Control plane server API
-firewall-cmd --permanent --add-port=8472/udp # Virtual network
-firewall-cmd --permanent --add-port=10250/tcp # k3s Kubelet metrics and logs (optional)
-firewall-cmd --permanent --add-port=2379/tcp # k3s etcd client communication
-firewall-cmd --permanent --add-port=2380/tcp # k3s etcd peer communication
-firewall-cmd --permanent --add-port=51820/udp # Flannel + WireGuard (IPv4 traffic)
-firewall-cmd --permanent --add-port=51821/udp # Flannel + WireGuard (IPv6 traffic)
-firewall-cmd --permanent --add-port=5001/tcp # Distributed registry
-firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16 # pods
-firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16 # services
-firewall-cmd --reload
+echo "Disabling selinux"
+sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
+setenforce 0
 
+#echo "Opening firewall ports"
+#firewall-cmd --permanent --add-port=80/tcp # Application HTTP port
+#firewall-cmd --permanent --add-port=443/tcp # Application HTTPS port
+#firewall-cmd --permanent --add-port=6443/tcp # Control plane server API
+#firewall-cmd --permanent --add-port=8472/udp # Virtual network
+#firewall-cmd --permanent --add-port=10250/tcp # k3s Kubelet metrics and logs (optional)
+#firewall-cmd --permanent --add-port=2379/tcp # k3s etcd client communication
+#firewall-cmd --permanent --add-port=2380/tcp # k3s etcd peer communication
+#firewall-cmd --permanent --add-port=51820/udp # Flannel + WireGuard (IPv4 traffic)
+#firewall-cmd --permanent --add-port=51821/udp # Flannel + WireGuard (IPv6 traffic)
+#firewall-cmd --permanent --add-port=5001/tcp # Distributed registry
+#firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16 # pods
+#firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16 # services
+#firewall-cmd --reload
+systemctl stop firewalld
+systemctl disable firewalld
+
+# optional, making available for troubleshooting if needed
 yum -y install bind-utils
 
 first_instance="k3s-server-0.${base_domain}"

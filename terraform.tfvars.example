@@ -27,6 +27,9 @@ vm_network_name = "gym-0600020stv-k3s8e2p2-segment"
 
 vsphere_folder = "ocp-gym/gym-0600020stv-k3s8e2p2"
 
+// Do not include the full path, only the name of the pool
+vsphere_resource_pool = "gym-0600020stv-k3s8e2p2"
+
 k3s_agent_count = 6
 
 aiops_version = "4.9.1"

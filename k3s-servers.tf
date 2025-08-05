@@ -37,7 +37,9 @@ data "cloudinit_config" "k3s_server_userdata" {
       private_registry_user_password = var.private_registry_user_password,
       private_registry_skip_tls      = var.private_registry_skip_tls ? "true" : "false",
       base_domain                    = var.base_domain,
-      mode                           = var.mode
+      mode                           = var.mode,
+      rhsm_username                  = var.rhsm_username,
+      rhsm_password                  = var.rhsm_password
     })
   }
 }
@@ -55,7 +57,7 @@ resource "vsphere_virtual_machine" "k3s_server" {
   count = var.k3s_server_count
 
   name             = "k3s-server-${count.index}"
-  resource_pool_id = data.vsphere_compute_cluster.this.resource_pool_id
+  resource_pool_id = data.vsphere_resource_pool.target_pool.id
   datastore_id     = data.vsphere_datastore.this.id
 
   folder = var.vsphere_folder
@@ -107,6 +109,9 @@ resource "vsphere_virtual_machine" "k3s_server" {
     thin_provisioned = true
   }
 
+  firmware                = "efi" # Ensure this matches your Packer template's firmware type
+  efi_secure_boot_enabled = false # Disable Secure Boot during cloning
+  
   clone {
     template_uuid = data.vsphere_virtual_machine.template.id
   }

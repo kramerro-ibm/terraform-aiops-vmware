@@ -1,3 +1,11 @@
+variable "rhsm_username" {
+  type = string
+}
+
+variable "rhsm_password" {
+  type = string
+}
+
 variable "vsphere_server" {
   type = string
 }
@@ -44,6 +52,10 @@ variable "ip" {
 }
 
 variable "vsphere_folder" {
+  type = string
+}
+
+variable "vsphere_resource_pool" {
   type = string
 }
 

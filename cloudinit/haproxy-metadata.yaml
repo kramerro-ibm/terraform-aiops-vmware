@@ -4,7 +4,7 @@ instance-id: haproxy
 network:
   version: 2
   ethernets:
-    eth0:
+    ens192:
       dhcp4: false
       addresses:
         - 192.168.252.9/24
