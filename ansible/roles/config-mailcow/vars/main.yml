@@ -1,0 +1,23 @@
+---
+# vars file for config-servers
+mail_ports:
+    - "25/tcp"
+    - "80/tcp"
+    - "443/tcp"
+    - "587/tcp"
+    - "993/tcp"
+    - "995/tcp"
+    - "4190/tcp"
+    - "465/tcp"
+    - "143/tcp"
+    - "110/tcp"
+    - "80/tcp"
+    - "443/tcp"
+
+redhat_info:
+  - major: 9
+  - minor: 4
+
+mailcow_repo: "https://github.com/mailcow/mailcow-dockerized"
+
+host_fqdn: "{{ ansible_hostname }}.gym.lan"

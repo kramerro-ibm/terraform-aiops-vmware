@@ -1,0 +1,11 @@
+---
+# tasks file for config-servers
+- name: Do the docker thing
+  include_tasks: docker.yml
+  when: inventory_hostname in groups['mail']
+  tags: mailcow
+
+- name: Configure firewall for mailcow
+  include_tasks: mail.yml
+  when: inventory_hostname in groups['mail']
+  tags: mailcow
