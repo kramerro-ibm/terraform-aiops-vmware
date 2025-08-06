@@ -21,18 +21,6 @@
 #    pvs:
 #      - /dev/sda3
 
-- name: Read our root disk information
-  community.general.parted: device=/dev/sda unit=MiB
-  register: sda_info
-
-- name: Extend last partition to fill all available space
-  community.general.parted:
-    device: /dev/sda
-    number: "{{ sda_info.partitions | length }}"
-    part_end: "100%"
-    resize: true
-    state: present
-
 - name: Add docker repository
   ansible.builtin.yum_repository:
     name: docker

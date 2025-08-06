@@ -60,9 +60,17 @@ resource "vsphere_virtual_machine" "mailcow" {
 
   disk {
     label            = "disk0"
-    size             = var.disk_size
+    size             = data.vsphere_virtual_machine.template.disks.0.size
     eagerly_scrub    = data.vsphere_virtual_machine.template.disks.0.eagerly_scrub
     thin_provisioned = data.vsphere_virtual_machine.template.disks.0.thin_provisioned
+  }
+
+  disk {
+    label            = "disk1"
+    size             = var.secondary_disk_size
+    unit_number      = 1
+    eagerly_scrub    = false
+    thin_provisioned = true
   }
 
   firmware                = "efi" # Ensure this matches your Packer template's firmware type

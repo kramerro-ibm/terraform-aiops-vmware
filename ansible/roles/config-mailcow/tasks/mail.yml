@@ -24,3 +24,25 @@
     dest: /opt/mailcow-dockerized/mailcow.conf
   when: inventory_hostname in groups['mail']
   tags: mailcow
+
+- name: Pull the mailcow images
+  ansible.builtin.command:
+    cmd: docker compose pull
+  register: mailcow_images
+  changed_when: mailcow_images.stdout != ''
+  failed_when: mailcow_images.rc != 0
+  args:
+    chdir: /opt/mailcow-dockerized
+  when: inventory_hostname in groups['mail']
+  tags: mailcow
+
+- name: Start mailcow containers
+  ansible.builtin.command:
+    cmd: docker compose up -d
+  register: mailcow_start
+  changed_when: mailcow_start.stdout != ''
+  failed_when: mailcow_start.rc != 0
+  args:
+    chdir: /opt/mailcow-dockerized
+  when: inventory_hostname in groups['mail']
+  tags: mailcow

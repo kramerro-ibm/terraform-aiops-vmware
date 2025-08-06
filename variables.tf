@@ -41,7 +41,7 @@ variable "template_name" {
   type = string
 }
 
-variable "disk_size" {
+variable "secondary_disk_size" {
   type = number
   default = 30
   description = "How big we want our disk in case we don't like defaults."
