@@ -178,6 +178,6 @@ until (aiopsctl cluster node up --server-url="https://${k3s_url}:6443" $INSTALL_
   sleep 2
 done
 
-disable_checksum_offloa
+disable_checksum_offload
 
 nonroot_config
