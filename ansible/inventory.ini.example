@@ -1,0 +1,25 @@
+[servers]
+k3s-server-0 ansible_host=192.168.252.10 ansible_user=clouduser
+k3s-server-0 ansible_host=192.168.252.11 ansible_user=clouduser
+k3s-server-0 ansible_host=192.168.252.12 ansible_user=clouduser
+
+[mail]
+mailcow ansible_host=192.168.252.100 ansible_user=clouduser
+
+
+[agents]
+k3s-agent-0 ansible_host=192.168.252.122 ansible_user=clouduser
+k3s-agent-1 ansible_host=192.168.252.124 ansible_user=clouduser
+k3s-agent-2 ansible_host=192.168.252.123 ansible_user=clouduser
+k3s-agent-3 ansible_host=192.168.252.127 ansible_user=clouduser
+k3s-agent-4 ansible_host=192.168.252.125 ansible_user=clouduser
+k3s-agent-5 ansible_host=192.168.252.126 ansible_user=clouduser
+
+[all:vars]
+ansible_ssh_user=clouduser
+ansible_ssh_private_key_file=../id_rsa
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+[k3s_cluster:children]
+servers
+agents

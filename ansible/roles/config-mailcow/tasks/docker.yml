@@ -1,0 +1,50 @@
+#- name: Enable the needed repositories
+#  ansible.builtin.command:
+#    cmd: >
+#      subscription-manager repos --enable=rhel-9-appstream-rpms
+#  when: ansible_facts['os_family'] == 'RedHat'
+
+# Wow, mailcow containerized just does not want to use podman
+#- name: Install podman and dependencies
+#  ansible.builtin.package:
+#    name:
+#      - podman
+#      - podman-compose
+#      - python3-pip
+#      - curl
+#      - git
+#    state: present
+
+#- name: Adjust disk size
+#  community.general.lvg:
+#    vg: vg.services
+#    pvs:
+#      - /dev/sda3
+
+- name: Add docker repository
+  ansible.builtin.yum_repository:
+    name: docker
+    description: Docker Repository
+    baseurl: https://download.docker.com/linux/rhel/{{ redhat_info[0].major }}/x86_64/stable/
+    gpgcheck: yes
+    gpgkey: https://download.docker.com/linux/rhel/gpg
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install docker and dependencies
+  ansible.builtin.package:
+    name:
+      - docker-ce 
+      - docker-ce-cli 
+      - containerd.io 
+      - docker-buildx-plugin 
+      - docker-compose-plugin
+      - curl
+      - git
+    state: present
+
+- name: Start and enable docker
+  ansible.builtin.systemd_service:
+    name: docker
+    state: started
+    enabled: true
+

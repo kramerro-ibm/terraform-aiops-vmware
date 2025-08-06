@@ -9,7 +9,10 @@ terraform {
       source  = "hashicorp/tls"
       version = "~> 4.0"
     }
-
+    # pfsense = {
+    #   source = "marshallford/pfsense"
+    #   version = "0.20.0"
+    # }
   }
 
   required_version = ">= 1.2.0"
@@ -43,3 +46,10 @@ locals {
   num_cpus = max(16, ceil(local.cpu_pool / local.total_nodes))
   memory   = max(20480, ceil(local.mem_pool_gb / local.total_nodes) * 1024)
 }
+
+# provider "pfsense" {
+#   url      = "https://${var.pfsense_host}" 
+#   username = var.pfsense_username
+#   password = var.pfsense_password
+#   tls_skip_verify = true
+# }

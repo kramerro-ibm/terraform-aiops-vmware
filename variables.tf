@@ -41,6 +41,12 @@ variable "template_name" {
   type = string
 }
 
+variable "secondary_disk_size" {
+  type = number
+  default = 30
+  description = "How big we want our disk in case we don't like defaults."
+}
+
 variable "nameservers" {
   type    = list(any)
   default = []
@@ -119,6 +125,36 @@ variable "aiops_version" {
 variable "base_domain" {
   type    = string
   default = "gym.lan"
+}
+
+variable "use_mailcow" {
+  default     = false
+  type        = bool
+  description = "Create and use a mailcow instance for email notifications"
+}
+
+variable "mailcow_ip" {
+  type        = string
+  default     = "192.168.252.100"
+  description = "IP address for the mailcow instance"
+}
+
+variable "pfsense_host" {
+  type        = string
+  default = "192.168.252.1"
+  description = "The hostname or IP address of the pfSense instance to manage."
+}
+
+variable "pfsense_username" {
+  type        = string
+  default     = "admin"
+  description = "Username for pfSense management."
+}
+
+variable "pfsense_password" {
+  type        = string
+  default     = "pfsense"
+  description = "Password for pfSense management."
 }
 
 variable "use_private_registry" {

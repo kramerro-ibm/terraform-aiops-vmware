@@ -1,10 +1,10 @@
 locals {
-  haproxy_metadata = templatefile("${path.module}/cloudinit/haproxy-metadata.yaml", {
+  mailcow_metadata = templatefile("${path.module}/cloudinit/mailcow-metadata.yaml", {
     base_domain = "${var.base_domain}"
   })
 }
 
-data "cloudinit_config" "haproxy_userdata" {
+data "cloudinit_config" "mailcow_userdata" {
   gzip          = false
   base64_encode = true
 
@@ -12,7 +12,7 @@ data "cloudinit_config" "haproxy_userdata" {
   part {
     filename     = "init.cfg"
     content_type = "text/cloud-config"
-    content = templatefile("${path.module}/cloudinit/haproxy-userdata.yaml", {
+    content = templatefile("${path.module}/cloudinit/mailcow-userdata.yaml", {
       base_domain = "${var.base_domain}"
       public_key  = tls_private_key.deployer.public_key_openssh
     })
@@ -20,29 +20,31 @@ data "cloudinit_config" "haproxy_userdata" {
 
   part {
     content_type = "text/x-shellscript"
-    content = templatefile("${path.module}/cloudinit/haproxy-install.sh", {
-      vsphere_server     = var.vsphere_server,
-      vsphere_user       = var.vsphere_user,
-      vsphere_password   = var.vsphere_password,
-      vsphere_datacenter = var.datacenter_name,
-      vsphere_folder     = var.vsphere_folder,
+    content = templatefile("${path.module}/cloudinit/mailcow-register.sh", {
       rhsm_username      = var.rhsm_username,
       rhsm_password      = var.rhsm_password
     })
   }
 }
 
-resource "vsphere_virtual_machine" "haproxy" {
+# resource "pfsense_dnsresolver_hostoverride" "mailcow" {
+#   count        = var.use_mailcow ? 1 : 0
+#   host = "mailcow"
+#   domain = var.base_domain
+#   ip_addresses = [var.mailcow_ip]
+#   description = "Mailcow DNS Override"
+# }
 
-  name             = "haproxy"
-#  resource_pool_id = data.vsphere_compute_cluster.this.resource_pool_id
+resource "vsphere_virtual_machine" "mailcow" {
+  count        = var.use_mailcow ? 1 : 0
+  name             = "mailcow"
   resource_pool_id = data.vsphere_resource_pool.target_pool.id
   datastore_id     = data.vsphere_datastore.this.id
 
   folder = var.vsphere_folder
 
-  num_cpus  = 2
-  memory    = 2048
+  num_cpus  = 4
+  memory    = 4096
   guest_id  = data.vsphere_virtual_machine.template.guest_id
   scsi_type = data.vsphere_virtual_machine.template.scsi_type
 
@@ -63,6 +65,14 @@ resource "vsphere_virtual_machine" "haproxy" {
     thin_provisioned = data.vsphere_virtual_machine.template.disks.0.thin_provisioned
   }
 
+  disk {
+    label            = "disk1"
+    size             = var.secondary_disk_size
+    unit_number      = 1
+    eagerly_scrub    = false
+    thin_provisioned = true
+  }
+
   firmware                = "efi" # Ensure this matches your Packer template's firmware type
   efi_secure_boot_enabled = false # Disable Secure Boot during cloning
 
@@ -71,9 +81,9 @@ resource "vsphere_virtual_machine" "haproxy" {
   }
 
   extra_config = {
-    "guestinfo.metadata"          = base64encode(local.haproxy_metadata)
+    "guestinfo.metadata"          = base64encode(local.mailcow_metadata)
     "guestinfo.metadata.encoding" = "base64"
-    "guestinfo.userdata"          = data.cloudinit_config.haproxy_userdata.rendered
+    "guestinfo.userdata"          = data.cloudinit_config.mailcow_userdata.rendered
     "guestinfo.userdata.encoding" = "base64"
   }
 
