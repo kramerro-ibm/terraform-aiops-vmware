@@ -31,7 +31,8 @@ data "cloudinit_config" "k3s_agent_userdata" {
       private_registry_user_password = var.private_registry_user_password,
       private_registry_skip_tls      = var.private_registry_skip_tls ? "true" : "false",
       rhsm_username                  = var.rhsm_username,
-      rhsm_password                  = var.rhsm_password
+      rhsm_password                  = var.rhsm_password,
+      mode                           = var.mode
     })
   }
 }

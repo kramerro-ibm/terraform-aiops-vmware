@@ -123,30 +123,32 @@ systemctl disable nm-cloud-setup.timer
 systemctl stop nm-cloud-setup.service
 systemctl disable nm-cloud-setup.service
 
+%{ if mode == "extended" }
 # allow SELinux users to execute files that have been modified, this
 # is needed for extended installation, if this is not set then the
 # aimanager-aio-cr-api pods will CrashLoop due to selinux
 setsebool -P selinuxuser_execmod 1
+%{ endif }
 
 curl -LO "https://github.com/IBM/aiopsctl/releases/download/v${aiops_version}/aiopsctl-linux_amd64.tar.gz"
 tar xf "aiopsctl-linux_amd64.tar.gz"
 mv aiopsctl /usr/local/bin/aiopsctl
 
-echo "Disabling selinux"
-sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
-setenforce 0
+#echo "Disabling selinux"
+#sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
+#setenforce 0
 
 echo "Opening firewall ports"
-#firewall-cmd --permanent --add-port=8472/udp # Flannel VXLAN
-#firewall-cmd --permanent --add-port=51820/udp # Flannel + WireGuard (IPv4 traffic)
-#firewall-cmd --permanent --add-port=51821/udp # Flannel + WireGuard (IPv6 traffic)
-#firewall-cmd --permanent --add-port=10250/tcp # k3s kubelet metrics and logs (optional)
-#firewall-cmd --permanent --add-port=5001/tcp # Distributed registry
-#firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16 # pods
-#firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16 # services
-#firewall-cmd --reload
-systemctl stop firewalld
-systemctl disable firewalld
+firewall-cmd --permanent --add-port=8472/udp # Flannel VXLAN
+firewall-cmd --permanent --add-port=51820/udp # Flannel + WireGuard (IPv4 traffic)
+firewall-cmd --permanent --add-port=51821/udp # Flannel + WireGuard (IPv6 traffic)
+firewall-cmd --permanent --add-port=10250/tcp # k3s kubelet metrics and logs (optional)
+firewall-cmd --permanent --add-port=5001/tcp # Distributed registry
+firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16 # pods
+firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16 # services
+firewall-cmd --reload
+#systemctl stop firewalld
+#systemctl disable firewalld
 
 # this is not being set automatically
 export HOME=/root
@@ -173,10 +175,16 @@ INSTALL_PARAMS="$${k3s_install_params[*]}"
 
 wait_lb
 
-until (aiopsctl cluster node up --server-url="https://${k3s_url}:6443" $INSTALL_PARAMS); do
-  echo 'k3s did not install correctly'
-  sleep 2
-done
+aiopsctl cluster node up --server-url="https://${k3s_url}:6443" $INSTALL_PARAMS
+
+# Check if SELinux is enforcing
+if [ "$(getenforce)" == "Enforcing" ]; then
+  echo "SELinux is in Enforcing mode. Restoring context to k3s so it can start."
+  # Restore the context on the file after it's installed
+  restorecon -v "/usr/local/bin/k3s"
+else
+  echo "SELinux is not in Enforcing mode. No action needed."
+fi
 
 disable_checksum_offload
 

@@ -35,7 +35,6 @@ data "cloudinit_config" "haproxy_userdata" {
 resource "vsphere_virtual_machine" "haproxy" {
 
   name             = "haproxy"
-#  resource_pool_id = data.vsphere_compute_cluster.this.resource_pool_id
   resource_pool_id = data.vsphere_resource_pool.target_pool.id
   datastore_id     = data.vsphere_datastore.this.id
 
