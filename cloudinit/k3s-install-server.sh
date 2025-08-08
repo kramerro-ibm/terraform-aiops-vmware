@@ -58,7 +58,6 @@ chown root:k3sadmin /var/lib/rancher/k3s/agent/etc/crictl.yaml
 chmod 640 /var/lib/rancher/k3s/agent/etc/crictl.yaml
 
 %{ if !use_private_registry }
-# for oc
 mkdir -p /home/clouduser/.kube
 cp /etc/rancher/k3s/k3s.yaml /home/clouduser/.kube/config
 chown -R clouduser:clouduser /home/clouduser/.kube
@@ -88,7 +87,6 @@ subscription-manager refresh || echo "WARNING: Failed to refresh subscriptions."
 yum makecache || dnf makecache || echo "WARNING: Failed to refresh package cache."
 
 echo "RHSM registration script finished at $(date)"
-
 
 echo "Starting LVM disk setup at $(date)"
 
@@ -141,10 +139,12 @@ systemctl disable nm-cloud-setup.timer
 systemctl stop nm-cloud-setup.service
 systemctl disable nm-cloud-setup.service
 
+%{ if mode == "extended" }
 # allow SELinux users to execute files that have been modified, this
 # is needed for extended installation, if this is not set then the
 # aimanager-aio-cr-api pods will CrashLoop due to selinux
 setsebool -P selinuxuser_execmod 1
+%{ endif }
 
 curl -LO "https://github.com/IBM/aiopsctl/releases/download/v${aiops_version}/aiopsctl-linux_amd64.tar.gz"
 tar xf "aiopsctl-linux_amd64.tar.gz"
@@ -165,24 +165,23 @@ setenforce 0
 
 export K3S_SELINUX=${enable_selinux}
 
-#echo "Opening firewall ports"
-#firewall-cmd --permanent --add-port=80/tcp # Application HTTP port
-#firewall-cmd --permanent --add-port=443/tcp # Application HTTPS port
-#firewall-cmd --permanent --add-port=6443/tcp # Control plane server API
-#firewall-cmd --permanent --add-port=8472/udp # Virtual network
-#firewall-cmd --permanent --add-port=10250/tcp # k3s Kubelet metrics and logs (optional)
-#firewall-cmd --permanent --add-port=2379/tcp # k3s etcd client communication
-#firewall-cmd --permanent --add-port=2380/tcp # k3s etcd peer communication
-#firewall-cmd --permanent --add-port=51820/udp # Flannel + WireGuard (IPv4 traffic)
-#firewall-cmd --permanent --add-port=51821/udp # Flannel + WireGuard (IPv6 traffic)
-#firewall-cmd --permanent --add-port=5001/tcp # Distributed registry
-#firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16 # pods
-#firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16 # services
-#firewall-cmd --reload
-systemctl stop firewalld
-systemctl disable firewalld
+echo "Opening firewall ports"
+firewall-cmd --permanent --add-port=80/tcp # Application HTTP port
+firewall-cmd --permanent --add-port=443/tcp # Application HTTPS port
+firewall-cmd --permanent --add-port=6443/tcp # Control plane server API
+firewall-cmd --permanent --add-port=8472/udp # Virtual network
+firewall-cmd --permanent --add-port=10250/tcp # k3s Kubelet metrics and logs (optional)
+firewall-cmd --permanent --add-port=2379/tcp # k3s etcd client communication
+firewall-cmd --permanent --add-port=2380/tcp # k3s etcd peer communication
+firewall-cmd --permanent --add-port=51820/udp # Flannel + WireGuard (IPv4 traffic)
+firewall-cmd --permanent --add-port=51821/udp # Flannel + WireGuard (IPv6 traffic)
+firewall-cmd --permanent --add-port=5001/tcp # Distributed registry
+firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16 # pods
+firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16 # services
+firewall-cmd --reload
+#systemctl stop firewalld
+#systemctl disable firewalld
 
-# optional, making available for troubleshooting if needed
 yum -y install bind-utils
 
 first_instance="k3s-server-0.${base_domain}"
@@ -215,10 +214,16 @@ INSTALL_PARAMS="$${k3s_install_params[*]}"
 
 if [[ "$first_instance" == "$instance_id" ]]; then
   echo "Happy, happy, joy, joy: Cluster init!"
-  until (aiopsctl cluster node up $INSTALL_PARAMS); do
-    echo 'k3s did not install correctly'
-    sleep 2
-  done
+  aiopsctl cluster node up $INSTALL_PARAMS
+
+  # Check if SELinux is enforcing
+  if [ "$(getenforce)" == "Enforcing" ]; then
+    echo "SELinux is in Enforcing mode. Restoring context to k3s so it can start."
+    # Restore the context on the file after it's installed
+    restorecon -v "/usr/local/bin/k3s"
+  else
+    echo "SELinux is not in Enforcing mode. No action needed."
+  fi
 
   disable_checksum_offload
 

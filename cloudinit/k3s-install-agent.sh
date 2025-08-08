@@ -123,10 +123,12 @@ systemctl disable nm-cloud-setup.timer
 systemctl stop nm-cloud-setup.service
 systemctl disable nm-cloud-setup.service
 
+%{ if mode == "extended" }
 # allow SELinux users to execute files that have been modified, this
 # is needed for extended installation, if this is not set then the
 # aimanager-aio-cr-api pods will CrashLoop due to selinux
 setsebool -P selinuxuser_execmod 1
+%{ endif }
 
 curl -LO "https://github.com/IBM/aiopsctl/releases/download/v${aiops_version}/aiopsctl-linux_amd64.tar.gz"
 tar xf "aiopsctl-linux_amd64.tar.gz"
@@ -148,16 +150,16 @@ setenforce 0
 export K3S_SELINUX=${enable_selinux}
 
 echo "Opening firewall ports"
-#firewall-cmd --permanent --add-port=8472/udp # Flannel VXLAN
-#firewall-cmd --permanent --add-port=51820/udp # Flannel + WireGuard (IPv4 traffic)
-#firewall-cmd --permanent --add-port=51821/udp # Flannel + WireGuard (IPv6 traffic)
-#firewall-cmd --permanent --add-port=10250/tcp # k3s kubelet metrics and logs (optional)
-#firewall-cmd --permanent --add-port=5001/tcp # Distributed registry
-#firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16 # pods
-#firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16 # services
-#firewall-cmd --reload
-systemctl stop firewalld
-systemctl disable firewalld
+firewall-cmd --permanent --add-port=8472/udp # Flannel VXLAN
+firewall-cmd --permanent --add-port=51820/udp # Flannel + WireGuard (IPv4 traffic)
+firewall-cmd --permanent --add-port=51821/udp # Flannel + WireGuard (IPv6 traffic)
+firewall-cmd --permanent --add-port=10250/tcp # k3s kubelet metrics and logs (optional)
+firewall-cmd --permanent --add-port=5001/tcp # Distributed registry
+firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16 # pods
+firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16 # services
+firewall-cmd --reload
+#systemctl stop firewalld
+#systemctl disable firewalld
 
 
 
@@ -197,7 +199,7 @@ restorecon -v "/usr/local/bin/k3s"
 dnf -y install https://github.com/k3s-io/k3s-selinux/releases/download/v1.6.latest.1/k3s-selinux-1.6-1.el9.noarch.rpm
 setenforce 1
 echo "Restarting k3s to apply selinux changes"
-systemctl restart k3s
+systemctl restart k3s-agent
 %{ endif }
 
 disable_checksum_offload
