@@ -198,6 +198,16 @@ echo "selinux: true" >> /etc/rancher/k3s/config.yaml
 restorecon -v "/usr/local/bin/k3s"
 dnf -y install https://github.com/k3s-io/k3s-selinux/releases/download/v1.6.latest.1/k3s-selinux-1.6-1.el9.noarch.rpm
 setenforce 1
+semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/storage/k3s(/.*)?"
+semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/k3s/agent/containerd/[^/]*/snapshots(/.*)?"
+semanage fcontext -a -t container_ro_file_t "/var/lib/aiops/storage/k3s/agent/containerd/[^/]*/sandboxes(/.*)?"
+semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/storage/ephemeral(/.*)?"
+semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/pods(/.*)?"
+semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/plugins(/.*)?"
+semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/plugins_registry(/.*)?"
+restorecon -RFv /var/lib/aiops/storage/ephemeral
+restorecon -RFv /var/lib/aiops/storage/k3s
+restorecon -RFv /var/lib/rancher/k3s
 echo "Restarting k3s to apply selinux changes"
 systemctl restart k3s-agent
 %{ endif }

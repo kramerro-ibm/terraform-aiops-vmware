@@ -217,13 +217,13 @@ if [[ "$first_instance" == "$instance_id" ]]; then
   aiopsctl cluster node up $INSTALL_PARAMS
 
   # Check if SELinux is enforcing
-  if [ "$(getenforce)" == "Enforcing" ]; then
-    echo "SELinux is in Enforcing mode. Restoring context to k3s so it can start."
-    # Restore the context on the file after it's installed
-    restorecon -v "/usr/local/bin/k3s"
-  else
-    echo "SELinux is not in Enforcing mode. No action needed."
-  fi
+#  if [ "$(getenforce)" == "Enforcing" ]; then
+#    echo "SELinux is in Enforcing mode. Restoring context to k3s so it can start."
+#    # Restore the context on the file after it's installed
+#    restorecon -v "/usr/local/bin/k3s"
+#  else
+#    echo "SELinux is not in Enforcing mode. No action needed."
+#  fi
 
   disable_checksum_offload
 
@@ -253,7 +253,18 @@ if [[ "$first_instance" == "$instance_id" ]]; then
   restorecon -v "/usr/local/bin/k3s"
   dnf -y install https://github.com/k3s-io/k3s-selinux/releases/download/v1.6.latest.1/k3s-selinux-1.6-1.el9.noarch.rpm
   setenforce 1
-  echo "Restarting k3s to apply selinux changes"
+  semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/storage/k3s(/.*)?"
+  semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/k3s/agent/containerd/[^/]*/snapshots(/.*)?"
+  semanage fcontext -a -t container_ro_file_t "/var/lib/aiops/storage/k3s/agent/containerd/[^/]*/sandboxes(/.*)?"
+  semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/platform(/.*)?"
+  semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/storage/ephemeral(/.*)?"
+  semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/pods(/.*)?"
+  semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/plugins(/.*)?"
+  semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/plugins_registry(/.*)?"
+  restorecon -RFv /var/lib/aiops/storage/k3s
+  restorecon -RFv /var/lib/aiops/platform
+  restorecon -RFv /var/lib/rancher/k3s
+  restorecon -RFv /var/lib/aiops/storage/ephemeral
   systemctl restart k3s
 %{ endif }
 
@@ -300,6 +311,21 @@ else
 %{ if enable_selinux }
   echo "Adding selinux to k3s config"
   echo "selinux: true" >> /etc/rancher/k3s/config.yaml
+  restorecon -v "/usr/local/bin/k3s"
+  dnf -y install https://github.com/k3s-io/k3s-selinux/releases/download/v1.6.latest.1/k3s-selinux-1.6-1.el9.noarch.rpm
+  setenforce 1
+  semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/storage/k3s(/.*)?"
+  semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/k3s/agent/containerd/[^/]*/snapshots(/.*)?"
+  semanage fcontext -a -t container_ro_file_t "/var/lib/aiops/storage/k3s/agent/containerd/[^/]*/sandboxes(/.*)?"
+  semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/platform(/.*)?"
+  semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/storage/ephemeral(/.*)?"
+  semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/pods(/.*)?"
+  semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/plugins(/.*)?"
+  semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/plugins_registry(/.*)?"
+  restorecon -RFv /var/lib/aiops/storage/k3s
+  restorecon -RFv /var/lib/aiops/platform
+  restorecon -RFv /var/lib/rancher/k3s
+  restorecon -RFv /var/lib/aiops/storage/ephemeral
   systemctl restart k3s
 %{ endif }
 
