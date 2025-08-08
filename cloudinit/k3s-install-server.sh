@@ -7,6 +7,7 @@ set -x
 install_aiops=${install_aiops}
 num_nodes=${num_nodes}
 
+
 wait_lb() {
 while [ true ]
 do
@@ -149,9 +150,20 @@ curl -LO "https://github.com/IBM/aiopsctl/releases/download/v${aiops_version}/ai
 tar xf "aiopsctl-linux_amd64.tar.gz"
 mv aiopsctl /usr/local/bin/aiopsctl
 
-echo "Disabling selinux"
-sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
+%{ if enable_selinux }
+echo "Enabling selinux"
+sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
+dnf -y install container-selinux selinux-policy-base
+# Turn off SELinux temporarily to allow installation
 setenforce 0
+restorecon -v "/usr/local/bin/aiopsctl"
+%{ else}
+echo "Disabling selinux"
+sed -i 's/^SELINUX=.*/SELINUX=permissive/' /etc/selinux/config
+setenforce 0
+%{ endif }
+
+export K3S_SELINUX=${enable_selinux}
 
 #echo "Opening firewall ports"
 #firewall-cmd --permanent --add-port=80/tcp # Application HTTP port
@@ -230,6 +242,16 @@ if [[ "$first_instance" == "$instance_id" ]]; then
     fi
   done
 
+%{ if enable_selinux }
+  echo "Adding selinux to k3s config"
+  echo "selinux: true" >> /etc/rancher/k3s/config.yaml
+  restorecon -v "/usr/local/bin/k3s"
+  dnf -y install https://github.com/k3s-io/k3s-selinux/releases/download/v1.6.latest.1/k3s-selinux-1.6-1.el9.noarch.rpm
+  setenforce 1
+  echo "Restarting k3s to apply selinux changes"
+  systemctl restart k3s
+%{ endif }
+
   # update coredns for haproxy resolution
   kubectl apply -f - <<EOF
 apiVersion: v1
@@ -270,6 +292,11 @@ else
     echo 'k3s did not install correctly'
     sleep 5
   done
+%{ if enable_selinux }
+  echo "Adding selinux to k3s config"
+  echo "selinux: true" >> /etc/rancher/k3s/config.yaml
+  systemctl restart k3s
+%{ endif }
 
   disable_checksum_offload
 

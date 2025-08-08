@@ -132,9 +132,20 @@ curl -LO "https://github.com/IBM/aiopsctl/releases/download/v${aiops_version}/ai
 tar xf "aiopsctl-linux_amd64.tar.gz"
 mv aiopsctl /usr/local/bin/aiopsctl
 
-echo "Disabling selinux"
-sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
+%{ if enable_selinux }
+echo "Enabling selinux"
+sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
+dnf -y install container-selinux selinux-policy-base
+# Turn off SELinux temporarily to allow installation
 setenforce 0
+restorecon -v "/usr/local/bin/aiopsctl"
+%{ else}
+echo "Disabling selinux"
+sed -i 's/^SELINUX=.*/SELINUX=permissive/' /etc/selinux/config
+setenforce 0
+%{ endif }
+
+export K3S_SELINUX=${enable_selinux}
 
 echo "Opening firewall ports"
 #firewall-cmd --permanent --add-port=8472/udp # Flannel VXLAN
@@ -147,6 +158,8 @@ echo "Opening firewall ports"
 #firewall-cmd --reload
 systemctl stop firewalld
 systemctl disable firewalld
+
+
 
 # this is not being set automatically
 export HOME=/root
@@ -177,6 +190,15 @@ until (aiopsctl cluster node up --server-url="https://${k3s_url}:6443" $INSTALL_
   echo 'k3s did not install correctly'
   sleep 2
 done
+%{ if enable_selinux }
+echo "Adding selinux to k3s config"
+echo "selinux: true" >> /etc/rancher/k3s/config.yaml
+restorecon -v "/usr/local/bin/k3s"
+dnf -y install https://github.com/k3s-io/k3s-selinux/releases/download/v1.6.latest.1/k3s-selinux-1.6-1.el9.noarch.rpm
+setenforce 1
+echo "Restarting k3s to apply selinux changes"
+systemctl restart k3s
+%{ endif }
 
 disable_checksum_offload
 

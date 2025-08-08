@@ -39,7 +39,8 @@ data "cloudinit_config" "k3s_server_userdata" {
       base_domain                    = var.base_domain,
       mode                           = var.mode,
       rhsm_username                  = var.rhsm_username,
-      rhsm_password                  = var.rhsm_password
+      rhsm_password                  = var.rhsm_password,
+      enable_selinux                 = var.enable_selinux ? "true" : "false"
     })
   }
 }
