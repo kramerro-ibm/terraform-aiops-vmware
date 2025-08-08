@@ -174,6 +174,12 @@ variable "private_registry_host" {
   }
 }
 
+variable "enable_selinux" {
+  default     = false
+  type        = bool
+  description = "Enable SELinux on the VMs. Set to false if you want to disable it."
+}
+
 variable "private_registry_repo" {
   default     = ""
   type        = string
