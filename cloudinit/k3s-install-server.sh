@@ -273,7 +273,7 @@ if [[ "$first_instance" == "$instance_id" ]]; then
   restorecon -RFv /var/lib/rancher/k3s
   restorecon -RFv /var/lib/aiops/storage/ephemeral
   restorecon -Rfv /var/run/k3s
-  restorecon -v /etc/systemd/system/k3s*
+#  restorecon -v /etc/systemd/system/k3s*
   echo "Restarting k3s to apply selinux changes"
   pkill -9 containerd-shim
   systemctl restart k3s
@@ -345,7 +345,7 @@ else
   restorecon -RFv /var/lib/rancher/k3s
   restorecon -RFv /var/lib/aiops/storage/ephemeral
   restorecon -Rfv /var/run/k3s
-  restorecon -v /etc/systemd/system/k3s*
+#  restorecon -v /etc/systemd/system/k3s*
   echo "Restarting k3s to apply selinux changes"
   pkill -9 containerd-shim
   systemctl restart k3s

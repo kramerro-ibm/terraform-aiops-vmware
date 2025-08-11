@@ -215,7 +215,7 @@ restorecon -RFv /var/lib/aiops/storage/k3s
 restorecon -RFv /var/lib/aiops/storage/ephemeral
 restorecon -RFv /var/lib/rancher/k3s
 restorecon -Rfv /var/run/k3s
-restorecon -v /etc/systemd/system/k3s*
+#restorecon -v /etc/systemd/system/k3s*
 echo "Restarting k3s to apply selinux changes"
 pkill -9 containerd-shim
 systemctl restart k3s-agent
