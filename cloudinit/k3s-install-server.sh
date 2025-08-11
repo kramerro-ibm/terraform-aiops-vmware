@@ -253,18 +253,29 @@ if [[ "$first_instance" == "$instance_id" ]]; then
   restorecon -v "/usr/local/bin/k3s"
   dnf -y install https://github.com/k3s-io/k3s-selinux/releases/download/v1.6.latest.1/k3s-selinux-1.6-1.el9.noarch.rpm
   setenforce 1
+# Local-path provisioner
+  semanage fcontext -a -t container_file_t "/var/lib/aiops/storage"
+# k3s / containerd
   semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/storage/k3s(/.*)?"
   semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/k3s/agent/containerd/[^/]*/snapshots(/.*)?"
   semanage fcontext -a -t container_ro_file_t "/var/lib/aiops/storage/k3s/agent/containerd/[^/]*/sandboxes(/.*)?"
+# Platform DB
   semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/platform(/.*)?"
+# kubelet ephemeral storage
   semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/storage/ephemeral(/.*)?"
   semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/pods(/.*)?"
   semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/plugins(/.*)?"
   semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/plugins_registry(/.*)?"
+# Relabel the paths
+  restorecon -RFv /var/lib/aiops/storage
   restorecon -RFv /var/lib/aiops/storage/k3s
   restorecon -RFv /var/lib/aiops/platform
   restorecon -RFv /var/lib/rancher/k3s
   restorecon -RFv /var/lib/aiops/storage/ephemeral
+  restorecon -Rfv /var/run/k3s
+  restorecon -v /etc/systemd/system/k3s*
+  echo "Restarting k3s to apply selinux changes"
+  pkill -9 containerd-shim
   systemctl restart k3s
 %{ endif }
 
@@ -314,18 +325,29 @@ else
   restorecon -v "/usr/local/bin/k3s"
   dnf -y install https://github.com/k3s-io/k3s-selinux/releases/download/v1.6.latest.1/k3s-selinux-1.6-1.el9.noarch.rpm
   setenforce 1
+# Local-path provisioner
+  semanage fcontext -a -t container_file_t "/var/lib/aiops/storage"
+# k3s / containerd
   semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/storage/k3s(/.*)?"
   semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/k3s/agent/containerd/[^/]*/snapshots(/.*)?"
   semanage fcontext -a -t container_ro_file_t "/var/lib/aiops/storage/k3s/agent/containerd/[^/]*/sandboxes(/.*)?"
+# Platform DB
   semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/platform(/.*)?"
+# kubelet ephemeral storage
   semanage fcontext -a -t container_var_lib_t "/var/lib/aiops/storage/ephemeral(/.*)?"
   semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/pods(/.*)?"
   semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/plugins(/.*)?"
   semanage fcontext -a -t container_file_t "/var/lib/aiops/storage/ephemeral/plugins_registry(/.*)?"
+# Relabel the paths
+  restorecon -RFv /var/lib/aiops/storage
   restorecon -RFv /var/lib/aiops/storage/k3s
   restorecon -RFv /var/lib/aiops/platform
   restorecon -RFv /var/lib/rancher/k3s
   restorecon -RFv /var/lib/aiops/storage/ephemeral
+  restorecon -Rfv /var/run/k3s
+  restorecon -v /etc/systemd/system/k3s*
+  echo "Restarting k3s to apply selinux changes"
+  pkill -9 containerd-shim
   systemctl restart k3s
 %{ endif }
 
