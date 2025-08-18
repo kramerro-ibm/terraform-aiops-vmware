@@ -24,6 +24,7 @@ data "cloudinit_config" "k3s_server_userdata" {
       vsphere_datacenter             = var.datacenter_name,
       vsphere_folder                 = var.vsphere_folder,
       k3s_token                      = random_password.k3s_token.result,
+      install_k3s                    = var.install_k3s,
       install_aiops                  = var.install_aiops,
       k3s_url                        = "haproxy.${var.base_domain}",
       accept_license                 = var.accept_license,
@@ -105,6 +106,14 @@ resource "vsphere_virtual_machine" "k3s_server" {
     label            = "disk3"
     size             = 120 # Size in GB
     unit_number      = 3
+    eagerly_scrub    = false
+    thin_provisioned = true
+  }
+
+  disk {
+    label            = "disk4"
+    size             = 120 # Size in GB
+    unit_number      = 4
     eagerly_scrub    = false
     thin_provisioned = true
   }
