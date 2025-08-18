@@ -1,4 +1,12 @@
 # Open up firewall ports for mailcow
+# Task for disabling SELinux.
+- name: Setting SELinux to Permissive.
+  ansible.posix.selinux:
+    state: permissive
+    policy: targeted
+  when: ansible_facts['selinux']['status'] == 'enabled'
+  tags: mailcow
+
 - name: Open firewall ports for mailcow
   ansible.posix.firewalld:
     port: "{{ item }}"
