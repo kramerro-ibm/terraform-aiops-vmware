@@ -45,6 +45,10 @@ locals {
       base_domain = var.base_domain
     })
   ]
+  agent_ips = {
+    for vm in vsphere_virtual_machine.k3s_agent :
+    vm.name => vm.default_ip_address
+  }
 }
 
 resource "vsphere_virtual_machine" "k3s_agent" {

@@ -53,3 +53,14 @@ locals {
 #   password = var.pfsense_password
 #   tls_skip_verify = true
 # }
+
+# Render our ansible inventory file
+resource "local_file" "ansible_inventory" {
+  filename = "${path.module}/ansible/inventory.ini"
+  content  = templatefile("${path.module}/cloudinit/inventory.ini.tpl", {
+    server_ips = local.server_ips
+    agent_ips  = local.agent_ips
+    mailcow_ip = var.mailcow_ip
+    use_mailcow = var.use_mailcow
+  })
+}

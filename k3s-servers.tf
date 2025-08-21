@@ -52,7 +52,14 @@ locals {
       base_domain = var.base_domain
     })
   ]
+  server_ips = {
+    for vm in vsphere_virtual_machine.k3s_server :
+    vm.name => vm.default_ip_address
+  }
+
 }
+
+
 
 resource "vsphere_virtual_machine" "k3s_server" {
   count = var.k3s_server_count
