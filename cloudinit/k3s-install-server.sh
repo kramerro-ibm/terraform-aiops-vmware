@@ -4,6 +4,7 @@ set -x
 
 # output in /var/log/cloud-init-output.log
 
+install_k3s=${install_k3s}
 install_aiops=${install_aiops}
 num_nodes=${num_nodes}
 
@@ -61,6 +62,39 @@ mkdir -p /home/clouduser/.kube
 cp /etc/rancher/k3s/k3s.yaml /home/clouduser/.kube/config
 chown -R clouduser:clouduser /home/clouduser/.kube
 %{ endif }
+}
+
+# This script automates the process of disabling audit logging in a K3s server.
+# It works by removing all audit-related settings from the config file and then restarting the service.
+disable_k3s_audit() {
+# Define the path to the K3s configuration file
+K3S_CONFIG_FILE="/etc/rancher/k3s/config.yaml"
+
+# Check if the config file exists
+if [ ! -f "$K3S_CONFIG_FILE" ]; then
+    echo "Error: K3s config file not found at $K3S_CONFIG_FILE."
+    echo "This script assumes you have a config.yaml file to modify."
+    exit 1
+fi
+
+# Use sed to delete lines containing "audit-log" or "audit-policy"
+echo "Removing audit-related configuration from $K3S_CONFIG_FILE..."
+sed -i '/audit-log/d' "$K3S_CONFIG_FILE"
+sed -i '/audit-policy-file/d' "$K3S_CONFIG_FILE"
+
+# Restart the K3s service to apply the changes
+echo "Restarting the k3s service to apply changes..."
+sudo systemctl restart k3s
+
+# Wait for the K3s API server to become ready
+echo "Waiting for k3s to become ready..."
+while ! kubectl get nodes &> /dev/null; do
+    echo "Still waiting..."
+    sleep 3
+done
+
+echo "K3s restart command sent. Audit logging should now be disabled."
+echo "You can check the service status with: sudo systemctl status k3s"
 }
 
 echo "Starting RHSM registration script (Simple Content Access enabled) at $(date)"
@@ -149,9 +183,18 @@ curl -LO "https://github.com/IBM/aiopsctl/releases/download/v${aiops_version}/ai
 tar xf "aiopsctl-linux_amd64.tar.gz"
 mv aiopsctl /usr/local/bin/aiopsctl
 
-#echo "Disabling selinux"
-#sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
-#setenforce 0
+# Get the initial SELinux status
+SELINUX_INITIAL_STATE=$(getenforce)
+echo "Initial SELinux state is: $SELINUX_INITIAL_STATE"
+
+# Check if SELinux is enforcing and disable it temporarily because RHEL 8.10 
+# SELinux policy prevents cloud-init from adding firewall rules
+if [ "$SELINUX_INITIAL_STATE" = "Enforcing" ]; then
+    echo "Disabling SELinux temporarily to apply firewall rules."
+    setenforce 0
+else
+    echo "SELinux is not in 'enforcing' mode. Skipping temporary disable."
+fi
 
 echo "Opening firewall ports"
 firewall-cmd --permanent --add-port=80/tcp # Application HTTP port
@@ -169,6 +212,14 @@ firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16 # services
 firewall-cmd --reload
 #systemctl stop firewalld
 #systemctl disable firewalld
+
+# Re-enable SELinux only if it was originally enforcing
+if [ "$SELINUX_INITIAL_STATE" = "Enforcing" ]; then
+    echo "Re-enabling SELinux."
+    setenforce 1
+else
+    echo "SELinux was not in 'enforcing' mode. No changes made."
+fi
 
 yum -y install bind-utils
 
@@ -202,7 +253,13 @@ INSTALL_PARAMS="$${k3s_install_params[*]}"
 
 if [[ "$first_instance" == "$instance_id" ]]; then
   echo "Happy, happy, joy, joy: Cluster init!"
-  aiopsctl cluster node up $INSTALL_PARAMS
+
+  if [[ "$install_k3s" == "true" ]]; then
+    aiopsctl cluster node up $INSTALL_PARAMS
+  else
+    echo "Skipping install."
+    exit 0
+  fi
 
   # Check if SELinux is enforcing
   if [ "$(getenforce)" == "Enforcing" ]; then
@@ -215,7 +272,9 @@ if [[ "$first_instance" == "$instance_id" ]]; then
 
   disable_checksum_offload
 
-  nonroot_config
+  disable_k3s_audit
+
+  #nonroot_config
 
   # wait for k3s startup
   until kubectl get pods -A | grep 'Running'; do
@@ -269,6 +328,13 @@ EOF
 
 else
   echo ":( Cluster join"
+
+  # nothing to do, exit
+  if [[ "$install_k3s" == "false" ]]; then
+    echo "Skipping install."
+    exit 0
+  fi
+
   wait_lb
   sleep 5
   aiopsctl cluster node up --server-url="https://$first_instance:6443" $INSTALL_PARAMS
@@ -284,5 +350,7 @@ else
 
   disable_checksum_offload
 
-  nonroot_config
+  disable_k3s_audit
+
+  #nonroot_config
 fi

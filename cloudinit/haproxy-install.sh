@@ -29,7 +29,7 @@ yum makecache || dnf makecache || echo "WARNING: Failed to refresh package cache
 echo "RHSM registration script finished at $(date)"
 
 # install haproxy
-yum install -y haproxy policycoreutils-python-utils
+yum install -y haproxy policycoreutils-python-utils jq
 
 systemctl status haproxy
 
@@ -37,11 +37,32 @@ systemctl status haproxy
 semanage port -a -t http_cache_port_t -p tcp 6443
 semanage permissive -a haproxy_t
 
+# Get the initial SELinux status
+SELINUX_INITIAL_STATE=$(getenforce)
+echo "Initial SELinux state is: $SELINUX_INITIAL_STATE"
+
+# Check if SELinux is enforcing and disable it temporarily because RHEL 8.10 
+# SELinux policy prevents cloud-init from adding firewall rules
+if [ "$SELINUX_INITIAL_STATE" = "Enforcing" ]; then
+    echo "Disabling SELinux temporarily to apply firewall rules."
+    setenforce 0
+else
+    echo "SELinux is not in 'enforcing' mode. Skipping temporary disable."
+fi
+
 echo "Opening firewall ports"
 firewall-cmd --permanent --add-port=80/tcp # Application HTTP port
 firewall-cmd --permanent --add-port=443/tcp # Application HTTPS port
 firewall-cmd --permanent --add-port=6443/tcp # Control plane server API
 firewall-cmd --reload
+
+# Re-enable SELinux only if it was originally enforcing
+if [ "$SELINUX_INITIAL_STATE" = "Enforcing" ]; then
+    echo "Re-enabling SELinux."
+    setenforce 1
+else
+    echo "SELinux was not in 'enforcing' mode. No changes made."
+fi
 
 #
 # vSphere govc CLI

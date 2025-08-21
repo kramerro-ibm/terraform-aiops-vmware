@@ -75,6 +75,12 @@ variable "k3s_agent_count" {
   default = 6
 }
 
+variable "install_k3s" {
+  default     = "true"
+  type        = string
+  description = "Can be either 'true' or 'false'."
+}
+
 variable "install_aiops" {
   default     = "true"
   type        = string
