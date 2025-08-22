@@ -1,0 +1,15 @@
+- name: Download and install aiopsctl
+  ansible.builtin.get_url:
+    url: https://github.com/IBM/aiopsctl/releases/download/v{{ aiops_version }}/aiopsctl-linux_amd64.tar.gz
+    dest: /tmp/aiopsctl-linux_amd64.tar.gz
+    mode: '0755'
+  register: download_aiopsctl
+
+- name: Extract aiopsctl and install
+  ansible.builtin.unarchive:
+    src: /tmp/aiopsctl-linux_amd64.tar.gz
+    dest: /usr/local/bin/
+    remote_src: yes
+    mode: '0755'
+  when: download_aiopsctl.changed
+  tags: aiopsctl

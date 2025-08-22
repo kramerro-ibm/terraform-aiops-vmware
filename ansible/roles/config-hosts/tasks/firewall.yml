@@ -1,0 +1,35 @@
+- name: Do all this shit
+  block:
+  - name: Check if firewalld is active
+    ansible.builtin.systemd:
+      name: firewalld
+    register: firewalld_status
+    failed_when: false
+    changed_when: false
+
+  - name: Open ports for k3s
+    when:
+    - firewalld_status.status.ActiveState == 'active'
+    - firewalld_status.status.SubState == "running"
+    ansible.posix.firewalld:
+      port: "{{ item }}"
+      permanent: true
+      immediate: true
+      state: enabled 
+    loop:
+      "{{ firewall_ports_server if inventory_hostname in groups['servers'] else firewall_ports_agent  }}"
+
+  - name: Add k3s networks to trusted zone
+    when:
+    - firewalld_status.status.ActiveState == 'active'
+    - firewalld_status.status.SubState == "running"
+    ansible.posix.firewalld:
+      zone: trusted
+      source: "{{ item }}"
+      permanent: true
+      immediate: true
+      state: enabled 
+    loop:
+      "{{ firewall_trusted }}"
+
+  tags: firewall

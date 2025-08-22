@@ -1,0 +1,149 @@
+# Make sure lvm is installed
+- name: Install LVM2
+  ansible.builtin.package:
+    name: lvm2
+    state: present
+
+- name: Get all disks (filter out loop and part)
+  ansible.builtin.command: lsblk -dn -o NAME,TYPE
+  register: raw_disks
+
+- name: Filter for unpartitioned physical disks
+  set_fact:
+    disk_list: >-
+      {{
+        raw_disks.stdout_lines
+        | map('split')
+        | selectattr('1', 'equalto', 'disk')
+        | map('first')
+        | list
+      }}
+
+- name: Check if disks have partitions
+  ansible.builtin.command: lsblk /dev/{{ item }} -n -o TYPE
+  register: disk_parts
+  loop: "{{ disk_list }}"
+  changed_when: false
+
+- name: Filter disks without partitions
+  set_fact:
+    unpartitioned_disks: >-
+      {{
+        disk_list
+        | zip(disk_parts.results)
+        | selectattr('1.stdout_lines', 'equalto', ['disk'])
+        | map('first')
+        | list
+      }}
+
+- name: Partition and create PV on unpartitioned disks
+  block:
+    - name: Create GPT partition table
+      ansible.builtin.command: "parted /dev/{{ item }} --script mklabel gpt"
+      loop: "{{ unpartitioned_disks }}"
+
+    - name: Create primary partition
+      ansible.builtin.command: "parted /dev/{{ item }} --script mkpart primary 0% 100%"
+      loop: "{{ unpartitioned_disks }}"
+
+    - name: Run partprobe to refresh partition table
+      ansible.builtin.command: "partprobe /dev/{{ item }}"
+      loop: "{{ unpartitioned_disks }}"
+
+    - name: Create physical volume on new partition
+      ansible.builtin.command: "pvcreate /dev/{{ item }}1"
+      loop: "{{ unpartitioned_disks }}"
+
+    - name: Create list of physical volume paths
+      set_fact:
+        created_pvs: "{{ created_pvs | default([]) + [ '/dev/' + item + '1' ] }}"
+      loop: "{{ unpartitioned_disks }}"
+
+  when: unpartitioned_disks | length > 0
+
+- name: Create volume group using created PVs
+  community.general.lvg:
+    vg: "vg_aiops"
+    pvs: "{{ created_pvs | default([]) }}"
+  when: created_pvs is defined and created_pvs | length > 0
+
+- name: Create the logical volumes 
+  block:
+  - name: Create storage lv
+    community.general.lvol:
+      vg: vg_aiops
+      lv: lv_storage
+      size: 119g
+
+  - name: Create rancher lv
+    community.general.lvol:
+      vg: vg_aiops
+      lv: lv_rancher
+      size: 24g
+
+  - name: Create platform lv if we're on a server
+    community.general.lvol:
+      vg: vg_aiops
+      lv: lv_platform
+      size: 119g
+    when: inventory_hostname in groups['servers']
+  
+- name: Create xfs filesystems
+  block:
+  - name: Create filesystem for storage
+    community.general.filesystem:
+      fstype: xfs
+      dev: /dev/vg_aiops/lv_storage
+
+  - name: Create filesystem for rancher
+    community.general.filesystem:
+      fstype: xfs
+      dev: /dev/vg_aiops/lv_rancher
+
+  - name: Create filesystem for platform
+    community.general.filesystem:
+      fstype: xfs
+      dev: /dev/vg_aiops/lv_platform
+    when: inventory_hostname in groups['servers']
+
+- name: Create mount points and mount filesystems
+  block:
+  - name: Create storage mount point
+    ansible.builtin.file:
+      path: |
+        /var/lib/aiops/storage
+        /var/lib/aiops/rancher
+      state: directory
+      mode: '0755'
+
+  - name: Create platform mount point
+    ansible.builtin.file:
+      path: /var/lib/aiops/platform
+      state: directory
+      mode: '0755'
+    when: inventory_hostname in groups['servers']
+
+  - name: Mount storage filesystem
+    ansible.posix.mount:
+      path: /var/lib/aiops/storage
+      src: /dev/vg_aiops/lv_storage
+      fstype: xfs
+      opts: defaults
+      state: mounted
+  - name: Mount rancher filesystem
+    ansible.posix.mount:
+      path: /var/lib/aiops/rancher
+      src: /dev/vg_aiops/lv_rancher
+      fstype: xfs
+      opts: defaults
+      state: mounted
+  - name: Mount platform filesystem
+    ansible.posix.mount:
+      path: /var/lib/aiops/platform
+      src: /dev/vg_aiops/lv_platform
+      fstype: xfs
+      opts: defaults
+      state: mounted
+    when: inventory_hostname in groups['servers']
+  
+  tags: storage

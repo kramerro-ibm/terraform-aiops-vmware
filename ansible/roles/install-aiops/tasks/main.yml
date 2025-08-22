@@ -1,0 +1,5 @@
+---
+# tasks file for install-aiops
+- name: Install aiopsctl
+  include_tasks: aiopsctl.yml
+  when: inventory_hostname in groups['k3s_cluster']

@@ -1,0 +1,18 @@
+---
+# tasks file for config-hosts
+- name: Subscribe to Redhat Subscription Management
+  include_tasks: subscribe.yml
+  when: ansible_facts['os_family'] == 'RedHat'
+  tags: subscribe
+
+- name: Configre host stuff
+  block:
+  - name: Configure storage
+    include_tasks: storage.yml
+    tags: storage
+  - name: Open Firewall ports
+    include_tasks: firewall.yml
+    tags: firewall
+
+  when: inventory_hostname in groups['k3s_cluster']
+#  when: inventory_hostname in groups['servers'] or inventory_hostname in groups['agents']

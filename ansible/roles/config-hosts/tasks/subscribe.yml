@@ -1,0 +1,31 @@
+- name: Subscribe to RedHat
+  ansible.builtin.command: 
+    argv: 
+      - /usr/bin/subscription-manager
+      - register 
+      - --username={{ rhsm_user }}
+      - --password={{ rhsm_pass }}
+      - --auto-attach
+  when: ansible_facts['os_family'] == 'RedHat'
+  register: rhsm_register
+  changed_when: rhsm_register.stdout != ''
+  # Fail this if the return code is not 0 (success) or 64 (already registered)
+  failed_when: rhsm_register.rc != 0 and rhsm_register.rc != 64
+  tags: config-hosts
+
+- name: Refresh Registries
+  ansible.builtin.command: 
+    argv: 
+      - /usr/bin/subscription-manager
+      - refresh
+  when: rhsm_register.rc == 0 or rhsm_register.rc == 64
+  register: rhsm_refresh
+  changed_when: rhsm_refresh.stdout != ''
+  failed_when: rhsm_refresh.rc != 0 
+  tags: config-hosts
+
+- name: Make the cache locally for repos
+  ansible.builtin.command: 
+    cmd: dnf makecache
+  when: rhsm_refresh.rc == 0
+  tags: config-hosts
