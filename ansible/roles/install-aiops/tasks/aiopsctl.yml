@@ -4,6 +4,7 @@
     dest: /tmp/aiopsctl-linux_amd64.tar.gz
     mode: '0755'
   register: download_aiopsctl
+  tags: aiopsctl
 
 - name: Extract aiopsctl and install
   ansible.builtin.unarchive:
@@ -12,4 +13,44 @@
     remote_src: yes
     mode: '0755'
   when: download_aiopsctl.changed
+  tags: aiopsctl
+
+- name: Verify aiopsctl installation
+  ansible.builtin.command: /usr/local/bin/aiopsctl version
+  register: aiopsctl_version
+  changed_when: false
+  tags: aiopsctl
+
+- name: Display aiopsctl version
+  ansible.builtin.debug:
+    msg: "aiopsctl version: {{ aiopsctl_version.stdout }}"
+  tags: aiopsctl  
+
+# Disable nm-cloud-setup.service to avoid conflicts with k3s
+# k3s won't run with nm-cloud-setup enabled
+#systemctl stop nm-cloud-setup.timer
+#systemctl disable nm-cloud-setup.timer 
+#systemctl stop nm-cloud-setup.service
+#systemctl disable nm-cloud-setup.service
+
+- name: Disable network manager
+  block:
+  - name: Disable nm-cloud-setup.service to avoid conflicts with docker
+    ansible.builtin.systemd_service:
+      name: nm-cloud-setup
+      state: stopped
+      enabled: false
+  - name: Disable nm-cloud-setup.timer to avoid conflicts with docker
+    ansible.builtin.systemd_service:
+      name: nm-cloud-setup.timer
+      state: stopped
+      enabled: false
+  when: ansible_facts['os_family'] == 'RedHat'
+  tags: aiopsctl  
+
+- name: Install bind-utils
+  ansible.builtin.package:
+    name: bind-utils
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat' and (inventory_hostname in groups['servers'])
   tags: aiopsctl

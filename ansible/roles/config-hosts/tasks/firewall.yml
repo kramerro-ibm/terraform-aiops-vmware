@@ -1,5 +1,13 @@
 - name: Do all this shit
   block:
+  - name: Check SELinux status
+    ansible.builtin.command: getenforce
+    register: selinux_status
+
+  - name: Disable SELinux if enforcing
+    ansible.builtin.command: setenforce 0
+    when: selinux_status.stdout == "Enforcing"
+
   - name: Check if firewalld is active
     ansible.builtin.systemd:
       name: firewalld
@@ -31,5 +39,9 @@
       state: enabled 
     loop:
       "{{ firewall_trusted }}"
+  
+  - name: Re-enable SELinux if it was enforcing
+    ansible.builtin.command: setenforce 1
+    when: selinux_status.stdout == "Enforcing"
 
   tags: firewall

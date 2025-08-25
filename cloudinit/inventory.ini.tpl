@@ -3,8 +3,8 @@
 ${name} ansible_host=${ip} ansible_user=clouduser
 %{ endfor }
 
-%{~ if use_mailcow ~}
 [mail]
+%{ if use_mailcow ~}
 mailcow ansible_host=${mailcow_ip} ansible_user=clouduser
 %{ endif ~}
 

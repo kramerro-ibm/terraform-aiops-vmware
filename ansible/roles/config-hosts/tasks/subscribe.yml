@@ -28,4 +28,5 @@
   ansible.builtin.command: 
     cmd: dnf makecache
   when: rhsm_refresh.rc == 0
+  ignore_errors: true
   tags: config-hosts
